@@ -15,7 +15,6 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -33,11 +32,9 @@ function App() {
         image: file,
       });
 
-      console.log({ store });
-
       return cleanupIPFS(store.data.image.href);
     } catch (err) {
-      console.log(err);
+      console.error(err);
       return null;
     }
   };
@@ -68,13 +65,25 @@ function App() {
       const url = URL.createObjectURL(response.data);
       setImageBlob(url);
       setIsGenerating(false);
-      setPrompt("");
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
   const mintNft = async () => {
+    if (name.length < 3) {
+      toast.error("Name is required");
+      return;
+    }
+    if (description.length < 5) {
+      toast.error("Description is required");
+      return;
+    }
+    if (address.length < 15) {
+      toast.error("Address is required");
+      return;
+    }
+    setLoading(true);
     try {
       const imageURL = await uploadArtToIpfs();
 
@@ -84,9 +93,9 @@ function App() {
         {
           file_url: imageURL,
           chain: "polygon",
-          name: "Sample NFT",
-          description: "Build with NFTPort!",
-          mint_to_address: "0x627306090abaB3A6e1400e9345bC60c78a8BEf57",
+          name: name,
+          description: description,
+          mint_to_address: address,
         },
         {
           headers: {
@@ -96,14 +105,16 @@ function App() {
       );
       const data = await response.data;
       setMinted(true);
-      console.log(data);
+      toast.success("Minted successfully");
+      setImageBlob(null);
+      setPrompt("");
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-zinc-200">
       <h1 className="text-4xl font-extrabold">AI Art Gasless mints</h1>
       <div className="flex flex-col items-center justify-center">
         {/* Create an input box and button saying next beside it */}
@@ -114,6 +125,7 @@ function App() {
             type="text"
             placeholder="Enter a prompt"
             disabled={isGenerating || imageBlob}
+            value={prompt}
           />
           {!imageBlob && (
             <button
@@ -123,6 +135,18 @@ function App() {
             >
               {isGenerating && <Spinner />}
               {!isGenerating && <span>Next</span>}
+            </button>
+          )}
+          {imageBlob && (
+            <button
+              onClick={() => {
+                setImageBlob(null);
+                setPrompt("");
+              }}
+              className={`bg-black text-white rounded-md p-2 cursor-pointer`}
+            >
+              {isGenerating && <Spinner />}
+              {!isGenerating && <span>Reset</span>}
             </button>
           )}
         </div>
@@ -165,7 +189,8 @@ function App() {
               onClick={mintNft}
               className="bg-black text-white rounded-md p-2"
             >
-              Mint NFT
+              {loading && <Spinner />}
+              {!loading && <span>Mint NFT</span>}
             </button>
           </div>
         )}
@@ -174,5 +199,4 @@ function App() {
     </div>
   );
 }
-
 export default App;
